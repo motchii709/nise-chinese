@@ -71,6 +71,29 @@ test('SKILL.md example outputs are all valid pseudo-Chinese', () => {
   }
 });
 
+test('README.nise-chinese.md prose is 100% jōyō kanji', () => {
+  // The pseudo-Chinese README must itself obey the skill's rule: every prose
+  // character is a jōyō kanji. Code fences are the allowed exception (rule 4);
+  // link lines and inline-code spans are technical necessity, stripped first.
+  const lines = readFileSync(join(root, 'README.nise-chinese.md'), 'utf8').split(/\r?\n/);
+  let inCode = false;
+  const bad = [];
+  for (const [idx, line] of lines.entries()) {
+    if (line.startsWith('```')) { inCode = !inCode; continue; }
+    if (inCode) continue;
+    if (line.includes('](')) continue; // markdown link / language switcher
+    const text = line
+      .replace(/`[^`]*`/g, '') // inline code spans
+      .replace(/^#{1,6}\s*/, '') // heading markers
+      .replace(/^-\s*/, ''); // list markers
+    if (!text.trim()) continue;
+    for (const ch of text.trim()) {
+      if (!JOYO.has(ch)) bad.push({ line: idx + 1, char: ch });
+    }
+  }
+  deepStrictEqual(bad, []);
+});
+
 test('references/self-check.md substitution table matches SUGGEST', () => {
   const md = readFileSync(join(root, 'references', 'self-check.md'), 'utf8');
   const rows = [...md.matchAll(/^\| (\S) \| (\S+) \|$/gm)];

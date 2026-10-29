@@ -1,32 +1,35 @@
 # nise-chinese
 
-**偽中国語エージェント** — すべての返答を日本語の常用漢字(2136字)だけで生成する AI エージェント・スキル。ひらがな・カタカナ・英数字・記号・表外漢字は一切使用禁止。
+English | [日本語](README.ja.md) | [偽中国語](README.nise-chinese.md)
 
-「私は学校に行きます」→「私学校行」(漢語圧縮すると「我通学」)
+**Pseudo-Chinese agent skill** — an AI agent skill that answers *only* in Japanese jōyō kanji (the official 2,136-character list). Hiragana, katakana, Latin letters, digits, punctuation, and non-jōyō kanji are all banned.
 
-視覚的には中国語の文章に見えるが、日本語話者は文脈で意味が取れる。漢字のみが並ぶことによる独特の滑稽さと力強さが武器。
+「私は学校に行きます」→「私学校行」(kana-stripped base form; compressed variant: 我通学)
 
-## 何が入っている
+It *looks* like Chinese, but Japanese speakers can parse it from context. The wall of kanji is the joke — and the point.
 
-| ファイル | 役割 |
+## What's inside
+
+| File | Role |
 |---|---|
-| `SKILL.md` | スキル本体。LLMエージェントへの指示書 |
-| `scripts/check.mjs` | 常用漢字検証CLI。リスト埋め込みの**単一ファイル**・ゼロ依存 |
-| `references/self-check.md` | ツールなし環境向けの自己検閲手順+置換表 |
-| `references/joyo-2136.md` | 常用漢字2136字の一覧(目視照合用) |
-| `data/suggest.json` | 置換表の一次データ |
-| `test/check.test.mjs` | チェッカーとドキュメント整合性のテスト |
+| `SKILL.md` | The skill itself. Instructions for the LLM agent |
+| `scripts/check.mjs` | Jōyō kanji validator CLI. Single self-contained file, zero dependencies |
+| `references/self-check.md` | Manual self-check procedure + substitution table for environments without tooling |
+| `references/joyo-2136.md` | The full 2,136-kanji list for manual lookup |
+| `data/suggest.json` | Source of truth for the substitution table |
+| `test/check.test.mjs` | Tests for the checker and doc/data consistency |
+| `README.md` / `README.ja.md` / `README.nise-chinese.md` | Docs (English default / Japanese / pseudo-Chinese) |
 
-## 検証は3段構え
+## Verification in three tiers
 
-1. **機械検証**(node がある環境): `node scripts/check.mjs "文章"`。常用漢字リストをスクリプト本体に埋め込んでいるので、**この1ファイルだけをコピーすればどこでも動く**(外部データ不要)
-2. **半機械検証**(node がない環境): `references/self-check.md` の手順で目視検査。かな・英数・記号は視覚走査で一発判定、漢字は86字の置換表+全2136字一覧と照合
-3. **最終確認**: 送信直前にかな・記号の混入を再確認
+1. **Machine check** (where node exists): `node scripts/check.mjs "text"`. The kanji list is embedded *in the script itself*, so copying this single file is enough — no external data.
+2. **Semi-manual check** (no node): follow `references/self-check.md`. Kana/ASCII/symbols are caught by visual scanning; kanji are checked against the 86-entry substitution table and the full 2,136-kanji list.
+3. **Final pass**: re-scan for stray kana/symbols right before sending.
 
-## 検証CLIの使い方
+## CLI usage
 
 ```console
-# 文字列を検査
+# check a string
 $ node scripts/check.mjs "我通学"
 All characters are jōyō kanji.
 
@@ -34,48 +37,48 @@ $ node scripts/check.mjs "此興味深"
 Found 1 non-jōyō char(s):
   此 (U+6B64) at pos 0 → suggest: "是"
 
-# ファイルを検査
+# check a file
 $ node scripts/check.mjs --file draft.txt
 
-# 埋め込みデータの整合性確認
+# verify embedded data integrity
 $ node scripts/check.mjs --stats
 JOYO: 2136 chars / SUGGEST: 86 entries / bad suggest values: 0
 ```
 
-違反があれば終了コード1、合格なら0。CIやエージェントの自己検閲ループにそのまま組める。モジュールとしても使える:
+Exit code 1 on violation, 0 on pass — drop it straight into CI or an agent's self-critique loop. It also works as a module:
 
 ```js
 import { checkString, JOYO, SUGGEST } from './check.mjs';
 checkString('此興味深'); // [{ char: '此', pos: 0, cp: 'U+6B64' }]
 ```
 
-## インストール (DSH / DeepSeek Harness)
+## Install (DSH / DeepSeek Harness)
 
 ```console
 git clone https://github.com/motchii709/nise-chinese
 xcopy /E /I nise-chinese %USERPROFILE%\.dsh\skills\nise-chinese
 ```
 
-skills/ はホットリロードされるので再起動不要。`/nise-chinese` または「偽中国語で返して」で発動。
+The `skills/` directory hot-reloads; no restart needed. Invoke with `/nise-chinese` or just ask 「偽中国語で返して」.
 
-## インストール (その他のエージェント)
+## Install (other agents)
 
-`SKILL.md` は frontmatter つきの汎用 Agent Skills 形式。Claude Code 等のスキル機構に `nise-chinese/` ごと置けば動く。スキル機構がない環境でも `SKILL.md` をシステムプロンプトに貼り、応答前に `node scripts/check.mjs` を回せば同じ効果が得られる。node もない環境では `references/self-check.md` の手順で目視検査する。
+`SKILL.md` is a standard Agent Skills file (frontmatter + markdown). Drop the `nise-chinese/` folder into any skills directory (Claude Code etc.). Without a skill mechanism, paste `SKILL.md` into the system prompt and run `node scripts/check.mjs` on drafts before sending. Without node at all, use the manual procedure in `references/self-check.md`.
 
-## データの出所と検証
+## Data provenance
 
-- `scripts/check.mjs` に埋め込んだ常用漢字リスト: kanjiapi.dev の `/v1/kanji/joyo`(2140件)から、2010年常用漢字表が括弧書きで添える康熙字典体の参照字体4字(𠮟・剝・塡・頰)を除外して2136字に整列。現代字体(剥・填・頬)を保持
-- 一次ソースと交叉検証: [davidluzgouveia/kanji-data](https://github.com/davidluzgouveia/kanji-data) の grade 1-8 (2136字) と突き合わせ、差分は 填/頬(採用) vs 塡/頰(不採用) の字体選択2組のみであることを確認済み
-- 再生成: `node tools/build-joyo.mjs && node tools/embed-joyo.mjs && node tools/gen-references.mjs`。生成物はテストで相互整合を担保(check.mjs の埋め込み = references/ の一覧 = suggest.json)
+- The kanji list embedded in `scripts/check.mjs` comes from kanjiapi.dev `/v1/kanji/joyo` (2,140 entries), minus the 4 Kangxi-dictionary reference forms that the 2010 jōyō table lists in parentheses (𠮟・剝・塡・頰), yielding 2,136 characters. Modern print forms (剥・填・頬) are kept.
+- Cross-checked against [davidluzgouveia/kanji-data](https://github.com/davidluzgouveia/kanji-data) grade 1–8 (2,136 chars). The only differences are the font-variant choices for two pairs: 填/頬 (ours) vs 塡/頰 (kanji-data).
+- Regenerate: `node tools/build-joyo.mjs && node tools/embed-joyo.mjs && node tools/gen-references.mjs`. Consistency between the embedded list, `references/`, and `data/suggest.json` is enforced by tests.
 
-## 開発
+## Development
 
 ```console
 node --test test/check.test.mjs
 ```
 
-9テスト: 埋め込みリストの字数・一意性・BMP範囲、純常用漢字文の合格、ひらがな/カタカナ/表外字/記号の検出、suggest.jsonの全値が常用漢字のみであること、references/ 2ファイルが埋め込みデータと完全一致することの検証。
+11 tests: embedded list count/uniqueness/BMP range, pass on pure-jōyō text, detection of hiragana/katakana/non-jōyō kanji/symbols, all substitution values being jōyō-only, SKILL.md examples being valid, and both `references/` files matching the embedded data exactly.
 
-## ライセンス
+## License
 
 MIT
