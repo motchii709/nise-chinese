@@ -55,6 +55,22 @@ test('all suggest values are joyo-only and keys are non-joyo', () => {
   }
 });
 
+test('SKILL.md example outputs are all valid pseudo-Chinese', () => {
+  const md = readFileSync(join(root, 'SKILL.md'), 'utf8');
+  // every 2-column table row's RIGHT cell must be jōyō-only after removing
+  // annotations like (基本形) and alternative separators like /
+  const rows = [...md.matchAll(/^\| [^|]+ \| ([^|]+) \|$/gm)].map((m) => m[1]);
+  ok(rows.length >= 15, `example rows: ${rows.length}`);
+  for (const raw of rows) {
+    const value = raw.replace(/（[^）]*）/g, '').replace(/\([^)]*\)/g, '').replace(/[/、]/g, '').replace(/\s/g, '').trim();
+    // rows that still contain kana after annotation-stripping are headers or
+    // Japanese-side descriptions, not pseudo-Chinese outputs — skip them
+    if (/[\u3040-\u30ff]/.test(value)) continue;
+    const issues = checkString(value);
+    deepStrictEqual(issues, [], `SKILL.md example "${raw}" -> "${value}" has non-joyo: ${issues.map((i) => i.char).join('')}`);
+  }
+});
+
 test('references/self-check.md substitution table matches SUGGEST', () => {
   const md = readFileSync(join(root, 'references', 'self-check.md'), 'utf8');
   const rows = [...md.matchAll(/^\| (\S) \| (\S+) \|$/gm)];
