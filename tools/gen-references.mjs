@@ -14,7 +14,7 @@ mkdirSync(join(root, 'references'), { recursive: true });
 const lines = [];
 lines.push('# 常用漢字一覧(2136字・2010年告示)');
 lines.push('');
-lines.push('スクリプトが使えない環境での目視照合用。この一覧にある漢字のみ使用可。');
+lines.push('スクリプトが使えない環境での目視照合用。この一覧にある漢字のみ使用可(記号・絵文字はここでは扱わない)。');
 lines.push('ブロックの見出しは Unicode のコードポイント範囲。');
 lines.push('');
 for (let i = 0; i < joyo.length; i += 48) {
