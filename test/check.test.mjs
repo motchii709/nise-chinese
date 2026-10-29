@@ -42,9 +42,35 @@ test('non-joyo kanji is flagged', () => {
   ok(checkString('此代碼修正').some((i) => i.char === '碼'));
 });
 
-test('punctuation is flagged', () => {
-  ok(checkString('我通学、明日会合。').some((i) => i.char === '、'));
-  ok(checkString('我通学、明日会合。').some((i) => i.char === '。'));
+test('punctuation and symbols are allowed', () => {
+  deepStrictEqual(checkString('我通学、明日会合。'), []);
+  deepStrictEqual(checkString('「是」如何？——符号可！'), []);
+  deepStrictEqual(checkString('視覚走査：簡潔・明快 ※注釈'), []);
+  deepStrictEqual(checkString('私→学校'), []);
+});
+
+test('ASCII letters and digits are still flagged', () => {
+  const issues = checkString('code123');
+  strictEqual(issues.length, 7);
+  ok(issues.every((i) => i.kind === 'alnum'));
+  ok(checkString('Ｃｏｄｅ１２３').every((i) => i.kind === 'alnum')); // fullwidth
+});
+
+test('emoji and misc symbols are allowed', () => {
+  deepStrictEqual(checkString('我通学✅🎉'), []);
+  deepStrictEqual(checkString('納豆我好😄'), []);
+});
+
+test('zero-width junk is still flagged', () => {
+  ok(checkString('我\u200B通学').some((i) => i.char === '\u200B' && i.kind === 'invisible'));
+});
+
+test('non-jōyō kanji outside BMP (𠮟) is flagged', () => {
+  ok(checkString('一𠮟').some((i) => i.char === '𠮟' && i.kind === 'kanji'));
+});
+
+test('halfwidth kana is flagged', () => {
+  ok(checkString('半角ｶﾅ').some((i) => i.char === 'ｶ' && i.kind === 'kana'));
 });
 
 test('all suggest values are joyo-only and keys are non-joyo', () => {
@@ -71,10 +97,11 @@ test('SKILL.md example outputs are all valid pseudo-Chinese', () => {
   }
 });
 
-test('README.nise-chinese.md prose is 100% jōyō kanji', () => {
+test('README.nise-chinese.md prose obeys the checker (jōyō kanji + allowed symbols only)', () => {
   // The pseudo-Chinese README must itself obey the skill's rule: every prose
-  // character is a jōyō kanji. Code fences are the allowed exception (rule 4);
-  // link lines and inline-code spans are technical necessity, stripped first.
+  // character passes checkString (jōyō kanji, or allowed symbols like 、。).
+  // Code fences are the allowed exception (rule 4); link lines and inline-code
+  // spans are technical necessity, stripped first.
   const lines = readFileSync(join(root, 'README.nise-chinese.md'), 'utf8').split(/\r?\n/);
   let inCode = false;
   const bad = [];
@@ -85,11 +112,11 @@ test('README.nise-chinese.md prose is 100% jōyō kanji', () => {
     const text = line
       .replace(/`[^`]*`/g, '') // inline code spans
       .replace(/^#{1,6}\s*/, '') // heading markers
-      .replace(/^-\s*/, ''); // list markers
-    if (!text.trim()) continue;
-    for (const ch of text.trim()) {
-      if (!JOYO.has(ch)) bad.push({ line: idx + 1, char: ch });
-    }
+      .replace(/^[-*]\s*/, '') // list markers
+      .trim();
+    if (!text || text.replace(/[-|—\s]/g, '') === '') continue; // table separator rows
+    const issues = checkString(text);
+    if (issues.length) bad.push({ line: idx + 1, chars: issues.map((i) => i.char).join('') });
   }
   deepStrictEqual(bad, []);
 });

@@ -2,11 +2,11 @@
 
 [English](README.md) | 日本語 | [偽中国語](README.nise-chinese.md)
 
-**偽中国語エージェント** — すべての返答を日本語の常用漢字(2136字)だけで生成する AI エージェント・スキル。ひらがな・カタカナ・英数字・記号・表外漢字は一切使用禁止。
+**偽中国語エージェント** — すべての返答を日本語の常用漢字(2136字)だけで生成する AI エージェント・スキル。ひらがな・カタカナ・英数字・表外漢字は禁止。記号(句読点など)と絵文字は使用可。
 
 「私は学校に行きます」→「私学校行」(かな抜き基本形、漢語圧縮すると「我通学」)
 
-視覚的には中国語の文章に見えるが、日本語話者は文脈で意味が取れる。漢字のみが並ぶことによる独特の滑稽さと力強さが武器。
+視覚的には中国語の文章に見えるが、日本語話者は文脈で意味が取れる。漢字のみが並ぶことによる独特の滑稽さと力強さが武器。句読点や絵文字は自由に使えるので、文の区切りは読みやすく保てる。
 
 ## 何が入っている
 
@@ -23,19 +23,19 @@
 ## 検証は3段構え
 
 1. **機械検証**(node がある環境): `node scripts/check.mjs "文章"`。常用漢字リストをスクリプト本体に埋め込んでいるので、**この1ファイルだけをコピーすればどこでも動く**(外部データ不要)
-2. **半機械検証**(node がない環境): `references/self-check.md` の手順で目視検査。かな・英数・記号は視覚走査で一発判定、漢字は86字の置換表+全2136字一覧と照合
-3. **最終確認**: 送信直前にかな・記号の混入を再確認
+2. **半機械検証**(node がない環境): `references/self-check.md` の手順で目視検査。かな・英数は視覚走査で一発判定(記号・絵文字は許可なので無視してよい)、漢字は86字の置換表+全2136字一覧と照合
+3. **最終確認**: 送信直前にかな・英数の混入を再確認
 
 ## 検証CLIの使い方
 
 ```console
 # 文字列を検査
 $ node scripts/check.mjs "我通学"
-All characters are jōyō kanji.
+All characters are jōyō kanji or allowed symbols.
 
 $ node scripts/check.mjs "此興味深"
-Found 1 non-jōyō char(s):
-  此 (U+6B64) at pos 0 → suggest: "是"
+Found 1 violation char(s):
+  此 (U+6B64) at pos 0 [kanji] → suggest: "是"
 
 # ファイルを検査
 $ node scripts/check.mjs --file draft.txt
@@ -49,7 +49,7 @@ JOYO: 2136 chars / SUGGEST: 86 entries / bad suggest values: 0
 
 ```js
 import { checkString, JOYO, SUGGEST } from './check.mjs';
-checkString('此興味深'); // [{ char: '此', pos: 0, cp: 'U+6B64' }]
+checkString('此興味深'); // [{ char: '此', pos: 0, cp: 'U+6B64', kind: 'kanji' }]
 ```
 
 ## インストール (DSH / DeepSeek Harness)
@@ -77,7 +77,7 @@ skills/ はホットリロードされるので再起動不要。`/nise-chinese`
 node --test test/check.test.mjs
 ```
 
-11テスト: 埋め込みリストの字数・一意性・BMP範囲、純常用漢字文の合格、ひらがな/カタカナ/表外字/記号の検出、suggest.jsonの全値が常用漢字のみであること、SKILL.md例文が全て常用漢字のみであること、references/ 2ファイルが埋め込みデータと完全一致することの検証。
+16テスト: 埋め込みリストの字数・一意性・BMP範囲、純常用漢字文の合格、ひらがな/カタカナ/表外字/英数字の検出、記号・絵文字の合格、ゼロ幅文字の検出、suggest.jsonの全値が常用漢字のみであること、SKILL.md例文が全て常用漢字のみであること、references/ 2ファイルが埋め込みデータと完全一致することの検証。
 
 ## ライセンス
 

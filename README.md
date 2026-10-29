@@ -2,11 +2,11 @@
 
 English | [日本語](README.ja.md) | [偽中国語](README.nise-chinese.md)
 
-**Pseudo-Chinese agent skill** — an AI agent skill that answers *only* in Japanese jōyō kanji (the official 2,136-character list). Hiragana, katakana, Latin letters, digits, punctuation, and non-jōyō kanji are all banned.
+**Pseudo-Chinese agent skill** — an AI agent skill that answers *only* in Japanese jōyō kanji (the official 2,136-character list). Hiragana, katakana, Latin letters, digits, and non-jōyō kanji are banned. Punctuation, symbols, and emoji are allowed.
 
 「私は学校に行きます」→「私学校行」(kana-stripped base form; compressed variant: 我通学)
 
-It *looks* like Chinese, but Japanese speakers can parse it from context. The wall of kanji is the joke — and the point.
+It *looks* like Chinese, but Japanese speakers can parse it from context. The wall of kanji is the joke — and the point. Punctuation and emoji stay available, so sentences keep their readability.
 
 ## What's inside
 
@@ -23,19 +23,19 @@ It *looks* like Chinese, but Japanese speakers can parse it from context. The wa
 ## Verification in three tiers
 
 1. **Machine check** (where node exists): `node scripts/check.mjs "text"`. The kanji list is embedded *in the script itself*, so copying this single file is enough — no external data.
-2. **Semi-manual check** (no node): follow `references/self-check.md`. Kana/ASCII/symbols are caught by visual scanning; kanji are checked against the 86-entry substitution table and the full 2,136-kanji list.
-3. **Final pass**: re-scan for stray kana/symbols right before sending.
+2. **Semi-manual check** (no node): follow `references/self-check.md`. Kana/ASCII are caught by visual scanning (symbols and emoji are allowed, so skip them); kanji are checked against the 86-entry substitution table and the full 2,136-kanji list.
+3. **Final pass**: re-scan for stray kana/ASCII right before sending.
 
 ## CLI usage
 
 ```console
 # check a string
 $ node scripts/check.mjs "我通学"
-All characters are jōyō kanji.
+All characters are jōyō kanji or allowed symbols.
 
 $ node scripts/check.mjs "此興味深"
-Found 1 non-jōyō char(s):
-  此 (U+6B64) at pos 0 → suggest: "是"
+Found 1 violation char(s):
+  此 (U+6B64) at pos 0 [kanji] → suggest: "是"
 
 # check a file
 $ node scripts/check.mjs --file draft.txt
@@ -49,7 +49,7 @@ Exit code 1 on violation, 0 on pass — drop it straight into CI or an agent's s
 
 ```js
 import { checkString, JOYO, SUGGEST } from './check.mjs';
-checkString('此興味深'); // [{ char: '此', pos: 0, cp: 'U+6B64' }]
+checkString('此興味深'); // [{ char: '此', pos: 0, cp: 'U+6B64', kind: 'kanji' }]
 ```
 
 ## Install (DSH / DeepSeek Harness)
@@ -77,7 +77,7 @@ The `skills/` directory hot-reloads; no restart needed. Invoke with `/nise-chine
 node --test test/check.test.mjs
 ```
 
-11 tests: embedded list count/uniqueness/BMP range, pass on pure-jōyō text, detection of hiragana/katakana/non-jōyō kanji/symbols, all substitution values being jōyō-only, SKILL.md examples being valid, and both `references/` files matching the embedded data exactly.
+16 tests: embedded list count/uniqueness/BMP range, pass on pure-jōyō text, detection of hiragana/katakana/non-jōyō kanji/ASCII letters-digits, pass on symbols/emoji, detection of zero-width junk, all substitution values being jōyō-only, SKILL.md examples being valid, and both `references/` files matching the embedded data exactly.
 
 ## License
 

@@ -144,22 +144,43 @@ export const SUGGEST = {
 };
 // ===SUGGEST_END===
 
+// Policy: only kana, ASCII/fullwidth alnum, and non-jōyō han characters are
+// violations. Everything else — punctuation, arrows, emoji, whitespace — is
+// allowed. Zero-width junk (ZWSP etc.) is flagged for safety.
+function isAlnumCp(cp) {
+  return (cp >= 0x30 && cp <= 0x39) || (cp >= 0x41 && cp <= 0x5a) || (cp >= 0x61 && cp <= 0x7a)
+    || (cp >= 0xff10 && cp <= 0xff19) || (cp >= 0xff21 && cp <= 0xff3a) || (cp >= 0xff41 && cp <= 0xff5a);
+}
+
+function violationKind(cp) {
+  if (cp === 0x30fb) return null; // ・ middle dot (lives in Katakana block) is a symbol
+  if ((cp >= 0x3040 && cp <= 0x309f) || (cp >= 0x30a0 && cp <= 0x30ff) || (cp >= 0x31f0 && cp <= 0x31ff) || (cp >= 0xff66 && cp <= 0xff9f)) return 'kana';
+  if (isAlnumCp(cp)) return 'alnum';
+  if (cp === 0x200b || cp === 0x2060 || cp === 0xfeff) return 'invisible';
+  if ((cp >= 0x2e80 && cp <= 0x2eff) || (cp >= 0x3400 && cp <= 0x4dbf) || (cp >= 0x4e00 && cp <= 0x9fff)
+    || (cp >= 0xf900 && cp <= 0xfaff) || cp >= 0x20000) return 'kanji';
+  return null; // symbols, emoji, whitespace → allowed
+}
+
 export function checkString(str) {
   const issues = [];
   for (let i = 0; i < str.length;) {
     const cp = str.codePointAt(i);
     const ch = str.slice(i, i + (cp > 0xffff ? 2 : 1));
-    if (!JOYO.has(ch)) issues.push({ char: ch, pos: i, cp: `U+${cp.toString(16).toUpperCase().padStart(4, '0')}` });
+    if (!JOYO.has(ch)) {
+      const kind = violationKind(cp);
+      if (kind) issues.push({ char: ch, pos: i, cp: `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`, kind });
+    }
     i += ch.length;
   }
   return issues;
 }
 
 function printIssues(issues) {
-  console.log(`Found ${issues.length} non-jōyō char(s):`);
+  console.log(`Found ${issues.length} violation char(s):`);
   for (const i of issues) {
     const repl = SUGGEST[i.char];
-    console.log(`  ${i.char} (${i.cp}) at pos ${i.pos}${repl ? ` → suggest: "${repl}"` : ''}`);
+    console.log(`  ${i.char} (${i.cp}) at pos ${i.pos} [${i.kind}]${repl ? ` → suggest: "${repl}"` : ''}`);
   }
 }
 
@@ -186,7 +207,7 @@ function main(argv) {
     printIssues(issues);
     process.exit(1);
   } else {
-    console.log('All characters are jōyō kanji.');
+    console.log('All characters are jōyō kanji or allowed symbols.');
     process.exit(0);
   }
 }
