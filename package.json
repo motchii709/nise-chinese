@@ -1,0 +1,11 @@
+{
+  "name": "pseudo-chinese",
+  "version": "1.0.0",
+  "description": "偽中国語エージェントスキル: 常用漢字のみで返答するAIエージェント + 機械検証CLI",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test test/check.test.mjs",
+    "check": "node scripts/check.mjs --validate-data"
+  }
+}
