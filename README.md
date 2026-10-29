@@ -11,10 +11,17 @@
 | ファイル | 役割 |
 |---|---|
 | `SKILL.md` | スキル本体。LLMエージェントへの指示書 |
-| `scripts/check.mjs` | 常用漢字検証CLI。ゼロ依存、Node.js本体のみ |
-| `data/joyo-2136.txt` | 常用漢字2136字リスト(1行1字) |
-| `data/suggest.json` | 表外字 → 常用漢字の置換ヒント |
-| `test/check.test.mjs` | チェッカーとデータのテスト |
+| `scripts/check.mjs` | 常用漢字検証CLI。リスト埋め込みの**単一ファイル**・ゼロ依存 |
+| `references/self-check.md` | ツールなし環境向けの自己検閲手順+置換表 |
+| `references/joyo-2136.md` | 常用漢字2136字の一覧(目視照合用) |
+| `data/suggest.json` | 置換表の一次データ |
+| `test/check.test.mjs` | チェッカーとドキュメント整合性のテスト |
+
+## 検証は3段構え
+
+1. **機械検証**(node がある環境): `node scripts/check.mjs "文章"`。常用漢字リストをスクリプト本体に埋め込んでいるので、**この1ファイルだけをコピーすればどこでも動く**(外部データ不要)
+2. **半機械検証**(node がない環境): `references/self-check.md` の手順で目視検査。かな・英数・記号は視覚走査で一発判定、漢字は86字の置換表+全2136字一覧と照合
+3. **最終確認**: 送信直前にかな・記号の混入を再確認
 
 ## 検証CLIの使い方
 
@@ -30,34 +37,36 @@ Found 1 non-jōyō char(s):
 # ファイルを検査
 $ node scripts/check.mjs --file draft.txt
 
-# データファイルの整合性検証
-$ node scripts/check.mjs --validate-data
-joyo-2136: OK (2136 unique BMP chars)
-suggest.json: OK (all values jōyō-only)
+# 埋め込みデータの整合性確認
+$ node scripts/check.mjs --stats
+JOYO: 2136 chars / SUGGEST: 86 entries / bad suggest values: 0
 ```
 
-違反があれば終了コード1、合格なら0。CIやエージェントの自己検閲ループにそのまま組める。
+違反があれば終了コード1、合格なら0。CIやエージェントの自己検閲ループにそのまま組める。モジュールとしても使える:
+
+```js
+import { checkString, JOYO, SUGGEST } from './check.mjs';
+checkString('此興味深'); // [{ char: '此', pos: 0, cp: 'U+6B64' }]
+```
 
 ## インストール (DSH / DeepSeek Harness)
 
 ```console
 git clone https://github.com/motchii709/nise-chinese
-copy nise-chinese\SKILL.md %USERPROFILE%\.dsh\skills\nise-chinese\SKILL.md
-xcopy /E /I nise-chinese\scripts %USERPROFILE%\.dsh\skills\nise-chinese\scripts
-xcopy /E /I nise-chinese\data %USERPROFILE%\.dsh\skills\nise-chinese\data
+xcopy /E /I nise-chinese %USERPROFILE%\.dsh\skills\nise-chinese
 ```
 
 skills/ はホットリロードされるので再起動不要。`/nise-chinese` または「偽中国語で返して」で発動。
 
 ## インストール (その他のエージェント)
 
-`SKILL.md` は frontmatter つきの汎用 Agent Skills 形式。Claude Code 等のスキル機構に `nise-chinese/` ごと置けば動く。スキル機構がない環境でも `SKILL.md` をシステムプロンプトに貼り、応答前に `node scripts/check.mjs` を回せば同じ効果が得られる。
+`SKILL.md` は frontmatter つきの汎用 Agent Skills 形式。Claude Code 等のスキル機構に `nise-chinese/` ごと置けば動く。スキル機構がない環境でも `SKILL.md` をシステムプロンプトに貼り、応答前に `node scripts/check.mjs` を回せば同じ効果が得られる。node もない環境では `references/self-check.md` の手順で目視検査する。
 
 ## データの出所と検証
 
-- `data/joyo-2136.txt`: kanjiapi.dev の `/v1/kanji/joyo`(2140件)から、2010年常用漢字表が括弧書きで添える康熙字典体の参照字体4字(𠮟・剝・塡・頰)を除外して2136字に整列。現代字体(剥・填・頬)を保持
+- `scripts/check.mjs` に埋め込んだ常用漢字リスト: kanjiapi.dev の `/v1/kanji/joyo`(2140件)から、2010年常用漢字表が括弧書きで添える康熙字典体の参照字体4字(𠮟・剝・塡・頰)を除外して2136字に整列。現代字体(剥・填・頬)を保持
 - 一次ソースと交叉検証: [davidluzgouveia/kanji-data](https://github.com/davidluzgouveia/kanji-data) の grade 1-8 (2136字) と突き合わせ、差分は 填/頬(採用) vs 塡/頰(不採用) の字体選択2組のみであることを確認済み
-- 再生成: `node tools/fetch-joyo.mjs && node tools/crosscheck-joyo.mjs && node tools/make-2136.mjs`
+- 再生成: `node tools/build-joyo.mjs && node tools/embed-joyo.mjs && node tools/gen-references.mjs`。生成物はテストで相互整合を担保(check.mjs の埋め込み = references/ の一覧 = suggest.json)
 
 ## 開発
 
@@ -65,7 +74,7 @@ skills/ はホットリロードされるので再起動不要。`/nise-chinese`
 node --test test/check.test.mjs
 ```
 
-7テスト: リストの字数・一意性・BMP範囲、純常用漢字文の合格、ひらがな/カタカナ/記号の検出、suggest.jsonの全値が常用漢字のみであることの検証。
+9テスト: 埋め込みリストの字数・一意性・BMP範囲、純常用漢字文の合格、ひらがな/カタカナ/表外字/記号の検出、suggest.jsonの全値が常用漢字のみであること、references/ 2ファイルが埋め込みデータと完全一致することの検証。
 
 ## ライセンス
 
