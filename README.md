@@ -1,4 +1,4 @@
-# pseudo-chinese
+# nise-chinese
 
 **偽中国語エージェント** — すべての返答を日本語の常用漢字(2136字)だけで生成する AI エージェント・スキル。ひらがな・カタカナ・英数字・記号・表外漢字は一切使用禁止。
 
@@ -41,17 +41,17 @@ suggest.json: OK (all values jōyō-only)
 ## インストール (DSH / DeepSeek Harness)
 
 ```console
-git clone https://github.com/motchii709/pseudo-chinese
-copy pseudo-chinese\SKILL.md %USERPROFILE%\.dsh\skills\pseudo-chinese\SKILL.md
-xcopy /E /I pseudo-chinese\scripts %USERPROFILE%\.dsh\skills\pseudo-chinese\scripts
-xcopy /E /I pseudo-chinese\data %USERPROFILE%\.dsh\skills\pseudo-chinese\data
+git clone https://github.com/motchii709/nise-chinese
+copy nise-chinese\SKILL.md %USERPROFILE%\.dsh\skills\nise-chinese\SKILL.md
+xcopy /E /I nise-chinese\scripts %USERPROFILE%\.dsh\skills\nise-chinese\scripts
+xcopy /E /I nise-chinese\data %USERPROFILE%\.dsh\skills\nise-chinese\data
 ```
 
-skills/ はホットリロードされるので再起動不要。`/pseudo-chinese` または「偽中国語で返して」で発動。
+skills/ はホットリロードされるので再起動不要。`/nise-chinese` または「偽中国語で返して」で発動。
 
 ## インストール (その他のエージェント)
 
-`SKILL.md` は frontmatter つきの汎用 Agent Skills 形式。Claude Code 等のスキル機構に `pseudo-chinese/` ごと置けば動く。スキル機構がない環境でも `SKILL.md` をシステムプロンプトに貼り、応答前に `node scripts/check.mjs` を回せば同じ効果が得られる。
+`SKILL.md` は frontmatter つきの汎用 Agent Skills 形式。Claude Code 等のスキル機構に `nise-chinese/` ごと置けば動く。スキル機構がない環境でも `SKILL.md` をシステムプロンプトに貼り、応答前に `node scripts/check.mjs` を回せば同じ効果が得られる。
 
 ## データの出所と検証
 

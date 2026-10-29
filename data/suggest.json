@@ -1,6 +1,6 @@
 {
   "version": "2025-09",
-  "description": "Non-jōyō → jōyō substitution hints for characters an LLM commonly produces in pseudo-Chinese style. Keys are single non-jōyō chars; values are jōyō-only replacements (1+ chars). Validated by scripts/check.mjs --validate-data.",
+  "description": "Non-jōyō → jōyō substitution hints for characters an LLM commonly produces in nise-Chinese style. Keys are single non-jōyō chars; values are jōyō-only replacements (1+ chars). Validated by scripts/check.mjs --validate-data.",
   "mappings": {
     "之": "是",
     "也": "又",
